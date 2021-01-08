@@ -48,21 +48,42 @@ int main(int argc, char **argv) {
         if(clientSocket == -1)
             LogExit("Error on accepting connection");
 
-        char clientAddrStr[BUFSZ];
-        AddrToStr(addr, clientAddrStr, BUFSZ);
-        printf("[Log] Connection from %s\n", clientAddrStr);
+        // Criando estrutura de dados para dados do cliente
+        ClientData *clientData = new ClientData(clientSocket, &clientStorage);
 
-        char buf[BUFSZ];
-        memset(buf, 0, BUFSZ);
-        size_t byteCount = recv(clientSocket, buf, BUFSZ, 0);
-        printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)byteCount, buf);
-
-        sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
-        byteCount = send(clientSocket, buf, strlen(buf) + 1, 0);
-        if(byteCount != strlen(buf) + 1)
-            LogExit("Error on sending message to client");
-        close(clientSocket);
+        // Criando nova thread para lidar com esse cliente
+        pthread_t threadID;
+        pthread_create(&threadID, NULL, ClientThread, clientData);
     }
 
     exit(EXIT_SUCCESS);
+}
+
+// Cria nova thread para lidar com um cliente individualmente
+void *ClientThread(void *data) {
+    // Armazenando dados do cliente
+    ClientData *clientData = (ClientData *)data;
+    sockaddr *clientAddr = (sockaddr *)&(clientData->storage);
+    int clientSocket = clientData->socket;
+
+    char clientAddrStr[BUFSZ];
+    AddrToStr(clientAddr, clientAddrStr, BUFSZ);
+    printf("[Log] Connection from %s\n", clientAddrStr);
+
+    // Recebendo mensagem do socket do cliente
+    char buf[BUFSZ];
+    memset(buf, 0, BUFSZ);
+    size_t byteCount = recv(clientSocket, buf, BUFSZ, 0);
+    printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)byteCount, buf);
+
+    // Manda resposta de mensagem recebida para o cliente
+    sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
+    byteCount = send(clientSocket, buf, strlen(buf) + 1, 0);
+    if(byteCount != strlen(buf) + 1)
+        LogExit("Error on sending message to client");
+    
+    // Fecha a thread e o socket do cliente com êxito
+    close(clientSocket);
+    delete clientData;
+    pthread_exit(EXIT_SUCCESS);
 }

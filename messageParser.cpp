@@ -30,6 +30,15 @@ std::vector<std::string> MessageParser::GetTags(const std::string message) {
     return tags;
 }
 
+bool MessageParser::IsValid(const std::string message) {
+    for(auto it = message.begin(); it != message.end(); ++it) {
+        printf("Character %c ascii %d\n", (*it), (*it));
+        if((*it) >= 128 || (*it) < 0)
+            return false;
+    }
+    return true;
+}
+
 bool MessageParser::IsSubscribe(const std::string message) {
     return message[0] == '+';
 }

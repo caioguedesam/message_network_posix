@@ -75,13 +75,15 @@ void Client::SendMessage(char *buffer, const int bufferSize) {
 void Client::ReceiveMessage(char *buffer) {
     memset(buffer, 0, BUFSZ);
     size_t byteCount = recv(socket, buffer, BUFSZ, 0);
-    printf("Received message with %ld byteCount\n", byteCount);
+    if(byteCount == 0) {
+        // Conexão terminada, fechar cliente
+        Exit();
+    }
     puts(buffer);
 }
 
 void Client::Exit() {
     close(socket);
-    printf("Closed client");
     exit(EXIT_SUCCESS);
 }
 

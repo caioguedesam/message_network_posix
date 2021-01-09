@@ -114,21 +114,25 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
     return 0;
 }
 
-void Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
+int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
     std::string message(buffer);
-    // Removing newline character
-    /*std::vector<std::string> tokens = parser.Split(message, '\n');
-    message = tokens[0];*/
     message = parser.RemoveNewline(message);
+
+    if(!parser.IsValid(message)) {
+        // Invalid message
+        return -1;
+    }
 
     // Checking message type
     if(!parser.IsKill(message) && !parser.IsSubscribe(message) && !parser.IsUnsubscribe(message)) {
         std::vector<std::string> tags = parser.GetTags(message);
         // Se não tiver nenhuma tag, retorna sem enviar mensagem para outros clientes
-        if(tags.empty()) return;
+        if(tags.empty()) return 0;
         // Envia mensagem para clientes inscritos na tag
         SendMessageToClients(&message[0], clientData, tags);
     }
+
+    return 0;
 }
 
 // Manda mensagem para os clientes que tiverem tags na lista de tags passada na função
@@ -160,7 +164,8 @@ void *ClientThread(void *data) {
     while(server->ReceiveMessageFromClient(messageBuffer, BUFSZ, clientData) == 0) {
         printf("Received message from client w/ socket %d\n", clientData->socket);
         // Analisando mensagem e enviando para outros clientes inscritos caso necessário
-        server->ParseMessageFromClient(messageBuffer, clientData);
+        if(server->ParseMessageFromClient(messageBuffer, clientData) == -1)
+            break;
     }
     
     // Terminando o socket do cliente e deleta seus dados do servidor

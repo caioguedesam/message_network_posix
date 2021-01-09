@@ -138,7 +138,7 @@ void Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) 
 void Server::SendMessageToClients(const char *buffer, ClientData *sender) {
     for(auto it = clients.begin(); it != clients.end(); ++it) {
         if(it->second == sender) continue;
-        size_t byteCount = send(sender->socket, buffer, strlen(buffer) + 1, 0);
+        size_t byteCount = send(it->first, buffer, strlen(buffer) + 1, 0);
         if(byteCount != strlen(buffer) + 1)
             LogExit("Error on sending message to client");
     }

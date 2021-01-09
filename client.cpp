@@ -74,18 +74,8 @@ void Client::SendMessage(char *buffer, const int bufferSize) {
 // Recebe mensagem do servidor, enviada por algum outro cliente
 void Client::ReceiveMessage(char *buffer) {
     memset(buffer, 0, BUFSZ);
-    unsigned byteTotal = 0;
-    while(true) {
-        size_t byteCount = recv(socket, buffer + byteTotal, BUFSZ - byteTotal, 0);
-        if(byteCount == 0) {
-            // Não recebeu dados, conexão terminada
-            break;
-        }
-        byteTotal += byteCount;
-    }
-
-    printf("Received %u bytes\n", byteTotal);
-    // Escreve a mensagem recebida no buffer
+    size_t byteCount = recv(socket, buffer, BUFSZ, 0);
+    printf("Received message with %ld byteCount\n", byteCount);
     puts(buffer);
 }
 
@@ -111,8 +101,15 @@ void *SendMessageThread(void *data) {
     }
 }
 
-void ReceiveMessageThread(void *data) {
-    
+void *ReceiveMessageThread(void *data) {
+    // Temporary for closing clients
+    signal(SIGINT, CloseThread);
+
+    Client *client = (Client *)data;
+    char buf[BUFSZ];
+    while(true) {
+        client->ReceiveMessage(buf);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -126,8 +123,10 @@ int main(int argc, char **argv) {
     /*char buf[BUFSZ];
     client.EnterMessage(buf, BUFSZ);
     client.SendMessage(buf, BUFSZ);*/
-    pthread_t threadID;
-    pthread_create(&threadID, NULL, SendMessageThread, &client);
+    pthread_t sendThreadID;
+    pthread_t receiveThreadID;
+    pthread_create(&sendThreadID, NULL, SendMessageThread, &client);
+    pthread_create(&receiveThreadID, NULL, ReceiveMessageThread, &client);
 
     // Recebendo mensagem para o servidor
     //client.ReceiveMessage(buf);
@@ -136,7 +135,8 @@ int main(int argc, char **argv) {
     /*while(true) {
 
     }*/
-    pthread_join(threadID, NULL);
+    pthread_join(sendThreadID, NULL);
+    pthread_join(receiveThreadID, NULL);
 
     client.Exit();
 }

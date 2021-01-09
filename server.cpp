@@ -1,13 +1,9 @@
 #include "server.h"
 
-void Usage(int argc, char **argv) {
-    printf("usage: %s <v4|v6> <server port>\n", argv[0]);
-    printf("example: %s v4 51511\n", argv[0]);
-    exit(EXIT_FAILURE);
-}
-
 Server::Server(const char* protocol, const char* port) {
     addr = FetchServerAddress(protocol, port);
+    if(addr == nullptr)
+        LogExit("Error while fetching server address on server construction");
     InitializeSocket();
 }
 
@@ -21,12 +17,9 @@ Server::~Server() {
 // Pega o endereço de todas as interfaces locais para o servidor
 // posteriormente amarrar a um socket
 sockaddr* Server::FetchServerAddress(const char* protocol, const char* portstr) {
-    // Analisando a porta
-    u_int16_t port = (u_int16_t)atoi(portstr);
+    uint16_t port = ParsePortFromDevice(portstr);
     if(port == 0)
-        return NULL;
-    // Convertendo a representação da porta do dispositivo para a da rede
-    port = htons(port);
+        LogExit("Error while parsing port from device when fetching server address on server");
 
     memset(&storage, 0, sizeof(storage));
     if(strcmp(protocol, "v4") == 0) {
@@ -44,7 +37,7 @@ sockaddr* Server::FetchServerAddress(const char* protocol, const char* portstr) 
         return (sockaddr *)(&storage);
     }
     else {
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -167,4 +160,10 @@ int main(int argc, char **argv) {
     }
 
     exit(EXIT_SUCCESS);
+}
+
+void Usage(int argc, char **argv) {
+    printf("usage: %s <v4|v6> <server port>\n", argv[0]);
+    printf("example: %s v4 51511\n", argv[0]);
+    exit(EXIT_FAILURE);
 }

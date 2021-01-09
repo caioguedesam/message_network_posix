@@ -1,42 +1,5 @@
 #include "common.h"
 
-// Analisa o endereço addrstr (decide entre IPv4/6) e o porto, e armazena em storage
-int AddrParse(const char* addrstr, const char* portstr, sockaddr_storage* storage) {
-    if(addrstr == NULL || portstr == NULL)
-        return -1;
-
-    // Analisando o porto
-    u_int16_t port = (u_int16_t)atoi(portstr);
-    if(port == 0)
-        return -1;
-    // Convertendo a representação do porto do dispositivo para a da rede (s = short)
-    port = htons(port);
-
-    // Analisando o endereço (IPv4 ou IPv6)
-    // Tentando protocolo IPv4
-    in_addr inaddr4;    // Endereço IPv4 32-bits
-    if(inet_pton(AF_INET, addrstr, &inaddr4)) {
-        // Confirmado IPv4, preenchendo dados do endereço em estrutura sockaddr_in
-        sockaddr_in *addr4 = (sockaddr_in *)storage;
-        addr4->sin_family = AF_INET;
-        addr4->sin_port = port;
-        addr4->sin_addr = inaddr4;
-        return 0;
-    }
-    // Tentando protocolo IPv6
-    in6_addr inaddr6;    // Endereço IPv6 128-bits
-    if(inet_pton(AF_INET6, addrstr, &inaddr6)) {
-        // Confirmado IPv6, preenchendo dados do endereço em estrutura sockaddr_in6
-        sockaddr_in6 *addr6 = (sockaddr_in6 *)storage;
-        addr6->sin6_family = AF_INET6;
-        addr6->sin6_port = port;
-        memcpy(&(addr6->sin6_addr), &inaddr6, sizeof(inaddr6));
-        return 0;
-    }
-
-    return -1;
-}
-
 // Transforma endereço IPv4 ou IPv6 em string
 void AddrToStr(const sockaddr *addr, char *str, size_t size) {
     int version;
@@ -64,15 +27,6 @@ void AddrToStr(const sockaddr *addr, char *str, size_t size) {
     if(str)
         snprintf(str, size, "IPv%d %s %hu", version, addrstr, port);
 
-    
-}
-
-// Armazena o endereço do socket numa estrutura de dados sockaddr,
-// baseado nos argumentos do cliente
-sockaddr *FetchSocketAddress(const char* arg, const char* port, sockaddr_storage *storage) {
-    if(AddrParse(arg, port, storage) != 0)
-            LogExit("Error on parsing IP address from arguments");
-    return (sockaddr *)storage;
 }
 
 // Inicializa um socket com o protocolo em storage
@@ -82,6 +36,16 @@ int CreateSocket(const sockaddr_storage storage) {
     if(s == -1)
         LogExit("Error on socket init");
     return s;
+}
+
+// Transforma a string de uma porta em representação do dispositivo para da rede
+uint16_t ParsePortFromDevice(const char *portStr) {
+    // Analisando a porta
+    uint16_t port = (uint16_t)atoi(portStr);
+    if(port == 0)
+        return 0;
+    // Convertendo a representação do porto do dispositivo para a da rede
+    return htons(port);
 }
 
 void LogExit(const char* msg) {

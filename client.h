@@ -22,13 +22,19 @@ class Client {
     sockaddr *serverAddr;
     std::vector<char*> tags;
 
-    Client();
+    Client(const char *addr, const char *port);
+    sockaddr *FetchServerAddress(const char *addrStr, const char *portStr);
+    sockaddr *FetchServerAddress4(in_addr addr, const uint16_t port);
+    sockaddr *FetchServerAddress6(in6_addr addr, const uint16_t port);
+    void InitializeSocket();
     void ConnectToServer();
     void EnterMessage(char *buffer, const int bufferSize);
-    void SendMessage(char *buffer);
+    void SendMessage(char *buffer, const int bufferSize);
+    void ReceiveMessage(char *buffer);
     void Subscribe(char *tag);
     void Unsubscribe(char *tag);
     void IsSubscribedToTag(char *tag);
+    void Exit();
 };
 
 void Usage(int argc, char **argv);

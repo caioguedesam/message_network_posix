@@ -8,11 +8,10 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-int AddrParse(const char *addrstr, const char *portstr, sockaddr_storage *storage);
 void AddrToStr(const sockaddr *addr, char *addrstr, size_t size);
 void LogExit(const char* msg);
 
-sockaddr *FetchSocketAddress(const char* arg, const char* port, sockaddr_storage *storage);
 int CreateSocket(const sockaddr_storage storage);
+uint16_t ParsePortFromDevice(const char *portStr);
 
 #endif

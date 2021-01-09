@@ -86,7 +86,6 @@ void Server::CreateNewClientThread(const int clientSocket, sockaddr_storage *cli
 
 void Server::RegisterClient(ClientData *client) {
     clients.insert(std::pair<int,ClientData*>(client->socket, client));
-    PrintClients();
 }
 
 void Server::UnregisterClient(ClientData *client) {
@@ -101,6 +100,47 @@ void Server::UnregisterClient(ClientData *client) {
 void Server::PrintClients() {
     for(auto it = clients.begin(); it != clients.end(); ++it) {
         printf("Client socket: %d\n", it->first);
+    }
+}
+
+int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientData *clientData) {
+    memset(buffer, 0, bufferSize);
+    size_t byteCount = recv(clientData->socket, buffer, bufferSize, 0);
+    if(byteCount == 0) {
+        // Conexão terminada
+        return -1;
+    }
+    // Parse message (register tags or send to other clients)
+    return 0;
+}
+
+void Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
+    //std::string message(buffer);
+    /*for(auto it = message.begin(); it != message.end(); ++it) {
+        if((*it) == '\n')
+            printf("\\n");
+        else if((*it) == '\0')
+            printf("\\0");
+        else
+            printf("%c", *it);
+    }
+    printf("\n");*/
+    /*std::vector<std::string> tokens = parser.Split(message, '\n');
+    for(auto it = tokens.begin(); it != tokens.end(); ++it) {
+        const char* token = &(*it)[0];
+        puts(token);
+        printf(" -- ");
+    }*/
+    //puts(&message[0]);
+    SendMessageToClients(buffer, clientData);
+}
+
+void Server::SendMessageToClients(const char *buffer, ClientData *sender) {
+    for(auto it = clients.begin(); it != clients.end(); ++it) {
+        if(it->second == sender) continue;
+        size_t byteCount = send(sender->socket, buffer, strlen(buffer) + 1, 0);
+        if(byteCount != strlen(buffer) + 1)
+            LogExit("Error on sending message to client");
     }
 }
 
@@ -119,18 +159,15 @@ void *ClientThread(void *data) {
     printf("[Log] Connection from %s\n", clientAddrStr);
 
     // Recebendo mensagem do socket do cliente
-    char buf[BUFSZ];
-    memset(buf, 0, BUFSZ);
-    size_t byteCount = recv(clientSocket, buf, BUFSZ, 0);
-    printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)byteCount, buf);
-
-    // Mandando resposta de mensagem recebida para o cliente
-    sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
-    byteCount = send(clientSocket, buf, strlen(buf) + 1, 0);
-    if(byteCount != strlen(buf) + 1)
-        LogExit("Error on sending message to client");
+    char messageBuffer[BUFSZ];
+    while(server->ReceiveMessageFromClient(messageBuffer, BUFSZ, clientData) == 0) {
+        printf("Received message from client w/ socket %d\n", clientData->socket);
+        // Analisando mensagem e enviando para outros clientes inscritos caso necessário
+        server->ParseMessageFromClient(messageBuffer, clientData);
+    }
     
     // Terminando o socket do cliente e deleta seus dados do servidor
+    printf("Terminating client w/ socket %d\n", clientData->socket);
     close(clientSocket);
     server->UnregisterClient(clientData);
     // Terminando a thread

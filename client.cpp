@@ -51,9 +51,9 @@ void Client::ConnectToServer() {
         LogExit("Error on connecting socket to server");
 
     // Mandando mensagem de confirmação
-    char addrstr[BUFSZ];
+    /*char addrstr[BUFSZ];
     AddrToStr(serverAddr, addrstr, BUFSZ);
-    printf("Connected to %s\n", addrstr);
+    printf("Connected to %s\n", addrstr);*/
 }
 
 // Recebe mensagem de entrada do cliente para ser enviada ao servidor
@@ -71,6 +71,7 @@ void Client::SendMessage(char *buffer, const int bufferSize) {
         LogExit("Error on sending message to server");
 }
 
+// Recebe mensagem do servidor, enviada por algum outro cliente
 void Client::ReceiveMessage(char *buffer) {
     memset(buffer, 0, BUFSZ);
     unsigned byteTotal = 0;
@@ -90,7 +91,28 @@ void Client::ReceiveMessage(char *buffer) {
 
 void Client::Exit() {
     close(socket);
+    printf("Closed client");
     exit(EXIT_SUCCESS);
+}
+
+void CloseThread(int s) {
+    pthread_exit(EXIT_SUCCESS);
+}
+
+void *SendMessageThread(void *data) {
+    // Temporary for closing clients
+    signal(SIGINT, CloseThread);
+
+    Client *client = (Client *)data;
+    char buf[BUFSZ];
+    while(true) {
+        client->EnterMessage(buf, BUFSZ);
+        client->SendMessage(buf, BUFSZ);
+    }
+}
+
+void ReceiveMessageThread(void *data) {
+    
 }
 
 int main(int argc, char **argv) {
@@ -101,12 +123,21 @@ int main(int argc, char **argv) {
     client.ConnectToServer();
 
     // Enviando mensagem para o servidor
-    char buf[BUFSZ];
+    /*char buf[BUFSZ];
     client.EnterMessage(buf, BUFSZ);
-    client.SendMessage(buf, BUFSZ);
+    client.SendMessage(buf, BUFSZ);*/
+    pthread_t threadID;
+    pthread_create(&threadID, NULL, SendMessageThread, &client);
+
     // Recebendo mensagem para o servidor
-    client.ReceiveMessage(buf);
+    //client.ReceiveMessage(buf);
     // Fecha a conexão e o cliente
+    //client.Exit();
+    /*while(true) {
+
+    }*/
+    pthread_join(threadID, NULL);
+
     client.Exit();
 }
 

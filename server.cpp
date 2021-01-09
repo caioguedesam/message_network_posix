@@ -115,24 +115,15 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
 }
 
 void Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
-    //std::string message(buffer);
-    /*for(auto it = message.begin(); it != message.end(); ++it) {
-        if((*it) == '\n')
-            printf("\\n");
-        else if((*it) == '\0')
-            printf("\\0");
-        else
-            printf("%c", *it);
-    }
-    printf("\n");*/
-    /*std::vector<std::string> tokens = parser.Split(message, '\n');
-    for(auto it = tokens.begin(); it != tokens.end(); ++it) {
-        const char* token = &(*it)[0];
-        puts(token);
-        printf(" -- ");
-    }*/
-    //puts(&message[0]);
-    SendMessageToClients(buffer, clientData);
+    std::string message(buffer);
+    // Removing newline character
+    std::vector<std::string> tokens = parser.Split(message, '\n');
+    message = tokens[0];
+
+    // Checking if
+
+    //SendMessageToClients(buffer, clientData);
+    SendMessageToClients(&message[0], clientData);
 }
 
 void Server::SendMessageToClients(const char *buffer, ClientData *sender) {

@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -26,6 +27,7 @@ class Server {
     sockaddr_storage storage;
     sockaddr *addr;
     std::map<int, ClientData*> clients;
+    std::map<int, std::vector<std::string>> clientTags;
     MessageParser parser;
 
     Server(const char* protocol, const char* port);
@@ -37,6 +39,10 @@ class Server {
     void CreateNewClientThread(const int clientSocket, sockaddr_storage *clientStorage);
     void RegisterClient(ClientData *client);
     void UnregisterClient(ClientData *client);
+    std::vector<std::string> GetClientTags(const int clientID);
+    int Subscribe(const int clientID, const std::string tag);
+    int Unsubscribe(const int clientID, const std::string tag);
+
     int ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientData *clientData);
     int ParseMessageFromClient(const char *buffer, ClientData *clientData);
     void SendMessageToClients(const char *buffer, ClientData *sender, const std::vector<std::string> tags);

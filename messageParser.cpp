@@ -32,7 +32,6 @@ std::vector<std::string> MessageParser::GetTags(const std::string message) {
 
 bool MessageParser::IsValid(const std::string message) {
     for(auto it = message.begin(); it != message.end(); ++it) {
-        printf("Character %c ascii %d\n", (*it), (*it));
         if((*it) >= 128 || (*it) < 0)
             return false;
     }
@@ -40,11 +39,19 @@ bool MessageParser::IsValid(const std::string message) {
 }
 
 bool MessageParser::IsSubscribe(const std::string message) {
-    return message[0] == '+';
+    if(message[0] != '+') return false;
+    for(auto it = message.begin(); it != message.end(); ++it) {
+        if((*it) == ' ' || (*it) == '\n') return false;
+    }
+    return true;
 }
 
 bool MessageParser::IsUnsubscribe(const std::string message) {
-    return message[0] == '-';
+    if(message[0] != '-') return false;
+    for(auto it = message.begin(); it != message.end(); ++it) {
+        if((*it) == ' ' || (*it) == '\n') return false;
+    }
+    return true;
 }
 
 bool MessageParser::IsKill(const std::string message) {

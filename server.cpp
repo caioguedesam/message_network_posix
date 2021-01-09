@@ -117,10 +117,46 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
 int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
     std::string message(buffer);
     message = parser.RemoveNewline(message);
+    int clientSocket = clientData->socket;
 
+    // Invalid message
     if(!parser.IsValid(message)) {
-        // Invalid message
         return -1;
+    }
+
+    // Subscribing/Unsubscribing to tags
+    if(parser.IsSubscribe(message)) {
+        std::string tag = message;
+        // Erase +
+        tag.erase(0, 1);
+        // Check if tag is already subscribed
+        if(std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag) != clientTags[clientSocket].end()) {
+            printf("< already subscribed +");
+            puts(&tag[0]);
+        }
+        else {
+            clientTags[clientSocket].push_back(tag);
+            printf("< subscribed +");
+            puts(&tag[0]);
+        }
+        return 0;
+    }
+    else if(parser.IsUnsubscribe(message)) {
+        std::string tag = message;
+        // Erase -
+        tag.erase(0, 1);
+        // Check if tag is already subscribed
+        auto it = std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag);
+        if(it == clientTags[clientSocket].end()) {
+            printf("< not subscribed -");
+            puts(&tag[0]);
+        }
+        else {
+            clientTags[clientSocket].erase(it);
+            printf("< unsubscribed -");
+            puts(&tag[0]);
+        }
+        return 0;
     }
 
     // Checking message type
@@ -162,7 +198,6 @@ void *ClientThread(void *data) {
     // Recebendo mensagem do socket do cliente
     char messageBuffer[BUFSZ];
     while(server->ReceiveMessageFromClient(messageBuffer, BUFSZ, clientData) == 0) {
-        printf("Received message from client w/ socket %d\n", clientData->socket);
         // Analisando mensagem e enviando para outros clientes inscritos caso necessário
         if(server->ParseMessageFromClient(messageBuffer, clientData) == -1)
             break;

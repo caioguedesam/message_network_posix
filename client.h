@@ -22,7 +22,6 @@ class Client {
     int socket;
     sockaddr_storage storage;
     sockaddr *serverAddr;
-    std::vector<char*> tags;
 
     Client(const char *addr, const char *port);
     sockaddr *FetchServerAddress(const char *addrStr, const char *portStr);
@@ -33,9 +32,6 @@ class Client {
     void EnterMessage(char *buffer, const int bufferSize);
     void SendMessage(char *buffer, const int bufferSize);
     void ReceiveMessage(char *buffer);
-    void Subscribe(char *tag);
-    void Unsubscribe(char *tag);
-    void IsSubscribedToTag(char *tag);
     void Exit();
 };
 

@@ -46,14 +46,8 @@ void Client::InitializeSocket() {
 
 // Conecta o socket do cliente ao endereço já estabelecido do servidor
 void Client::ConnectToServer() {
-    // Conectando
     if(connect(socket, serverAddr, sizeof(storage)) != 0)
         LogExit("Error on connecting socket to server");
-
-    // Mandando mensagem de confirmação
-    /*char addrstr[BUFSZ];
-    AddrToStr(serverAddr, addrstr, BUFSZ);
-    printf("Connected to %s\n", addrstr);*/
 }
 
 // Recebe mensagem de entrada do cliente para ser enviada ao servidor
@@ -65,7 +59,6 @@ void Client::EnterMessage(char *buffer, const int bufferSize) {
 
 // Envia mensagem ao servidor após a entrada pelo cliente
 void Client::SendMessage(char *buffer, const int bufferSize) {
-    // Enviando mensagem pro servidor
     size_t byteCount = send(socket, buffer, strlen(buffer) + 1, 0);
     if(byteCount != strlen(buffer) + 1)
         LogExit("Error on sending message to server");
@@ -91,8 +84,8 @@ void CloseThread(int s) {
     pthread_exit(EXIT_SUCCESS);
 }
 
+// Thread para receber entrada e enviar mensagens ao servidor
 void *SendMessageThread(void *data) {
-    // Temporary for closing clients
     signal(SIGINT, CloseThread);
 
     Client *client = (Client *)data;
@@ -103,8 +96,8 @@ void *SendMessageThread(void *data) {
     }
 }
 
+// Thread para receber mensagens do servidor
 void *ReceiveMessageThread(void *data) {
-    // Temporary for closing clients
     signal(SIGINT, CloseThread);
 
     Client *client = (Client *)data;
@@ -118,25 +111,17 @@ int main(int argc, char **argv) {
     if(argc < 3)
         Usage(argc, argv);
 
+    // Criando cliente e conectando à endereço e porta especificados
     Client client = Client(argv[1], argv[2]);
     client.ConnectToServer();
 
-    // Enviando mensagem para o servidor
-    /*char buf[BUFSZ];
-    client.EnterMessage(buf, BUFSZ);
-    client.SendMessage(buf, BUFSZ);*/
+    // Criando threads para enviar mensagens e receber mensagens do servidor
     pthread_t sendThreadID;
     pthread_t receiveThreadID;
     pthread_create(&sendThreadID, NULL, SendMessageThread, &client);
     pthread_create(&receiveThreadID, NULL, ReceiveMessageThread, &client);
 
-    // Recebendo mensagem para o servidor
-    //client.ReceiveMessage(buf);
-    // Fecha a conexão e o cliente
-    //client.Exit();
-    /*while(true) {
-
-    }*/
+    // Executa o main até essas threads serem terminadas
     pthread_join(sendThreadID, NULL);
     pthread_join(receiveThreadID, NULL);
 

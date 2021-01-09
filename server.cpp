@@ -117,16 +117,22 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
 void Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
     std::string message(buffer);
     // Removing newline character
-    std::vector<std::string> tokens = parser.Split(message, '\n');
-    message = tokens[0];
+    /*std::vector<std::string> tokens = parser.Split(message, '\n');
+    message = tokens[0];*/
+    message = parser.RemoveNewline(message);
 
-    // Checking if
-
-    //SendMessageToClients(buffer, clientData);
-    SendMessageToClients(&message[0], clientData);
+    // Checking message type
+    if(!parser.IsKill(message) && !parser.IsSubscribe(message) && !parser.IsUnsubscribe(message)) {
+        std::vector<std::string> tags = parser.GetTags(message);
+        // Se não tiver nenhuma tag, retorna sem enviar mensagem para outros clientes
+        if(tags.empty()) return;
+        // Envia mensagem para clientes inscritos na tag
+        SendMessageToClients(&message[0], clientData, tags);
+    }
 }
 
-void Server::SendMessageToClients(const char *buffer, ClientData *sender) {
+// Manda mensagem para os clientes que tiverem tags na lista de tags passada na função
+void Server::SendMessageToClients(const char *buffer, ClientData *sender, const std::vector<std::string> tags) {
     for(auto it = clients.begin(); it != clients.end(); ++it) {
         if(it->second == sender) continue;
         size_t byteCount = send(it->first, buffer, strlen(buffer) + 1, 0);

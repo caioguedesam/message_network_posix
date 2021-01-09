@@ -1,5 +1,10 @@
 #include "messageParser.h"
 
+std::string MessageParser::RemoveNewline(const std::string message) {
+    std::vector<std::string> tokens = Split(message, '\n');
+    return tokens[0];
+}
+
 std::vector<std::string> MessageParser::Split(const std::string message, const char delimiter) {
     std::vector<std::string> segments;
     std::string segment;
@@ -8,4 +13,31 @@ std::vector<std::string> MessageParser::Split(const std::string message, const c
         segments.push_back(segment);
 
     return segments;
+}
+
+std::vector<std::string> MessageParser::GetTags(const std::string message) {
+    std::vector<std::string> tags;
+    std::string tag;
+    std::stringstream ss(message);
+    // Procura espaços em branco para delimitar tags
+    while(std::getline(ss, tag, ' ')) {
+        // Se o primeiro char após o espaço é #, é uma tag
+        if(tag[0] == '#') {
+            tag = RemoveNewline(tag);
+            tags.push_back(tag);
+        }   // Depois fazer checagem para tags válidas
+    }
+    return tags;
+}
+
+bool MessageParser::IsSubscribe(const std::string message) {
+    return message[0] == '+';
+}
+
+bool MessageParser::IsUnsubscribe(const std::string message) {
+    return message[0] == '-';
+}
+
+bool MessageParser::IsKill(const std::string message) {
+    return message == "##kill";
 }

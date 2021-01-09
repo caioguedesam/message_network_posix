@@ -39,7 +39,7 @@ class Server {
     void UnregisterClient(ClientData *client);
     int ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientData *clientData);
     void ParseMessageFromClient(const char *buffer, ClientData *clientData);
-    void SendMessageToClients(const char *buffer, ClientData *sender);
+    void SendMessageToClients(const char *buffer, ClientData *sender, const std::vector<std::string> tags);
 
     void PrintClients();
 };

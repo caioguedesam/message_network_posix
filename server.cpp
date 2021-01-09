@@ -6,63 +6,118 @@ void Usage(int argc, char **argv) {
     exit(EXIT_FAILURE);
 }
 
-int main(int argc, char **argv) {
-    if(argc < 3)
-        Usage(argc, argv);
+Server::Server(const char* protocol, const char* port) {
+    addr = FetchServerAddress(protocol, port);
+    InitializeSocket();
+}
 
-    // Inicializando o socket para comunicação
-    // Pegando endereço
-    sockaddr_storage storage;
-    if(ServerSockaddrInit(argv[1], argv[2], &storage) != 0)
-        Usage(argc, argv);
-    sockaddr *addr = (sockaddr *)(&storage);
-    // Criando socket
-    int serverSocket;
-    serverSocket = socket(storage.ss_family, SOCK_STREAM, 0);
-    if(serverSocket == -1)
-        LogExit("Error on socket init");
-    // Permitindo socket reutilizar endereços
+Server::~Server() {
+    for(auto it = clients.begin(); it != clients.end(); ) {
+        delete it->second;
+        it = clients.erase(it);
+    }
+}
+
+// Pega o endereço de todas as interfaces locais para o servidor
+// posteriormente amarrar a um socket
+sockaddr* Server::FetchServerAddress(const char* protocol, const char* portstr) {
+    // Analisando a porta
+    u_int16_t port = (u_int16_t)atoi(portstr);
+    if(port == 0)
+        return NULL;
+    // Convertendo a representação da porta do dispositivo para a da rede
+    port = htons(port);
+
+    memset(&storage, 0, sizeof(storage));
+    if(strcmp(protocol, "v4") == 0) {
+        sockaddr_in *addr4 = (sockaddr_in *)(&storage);
+        addr4->sin_family = AF_INET;
+        addr4->sin_addr.s_addr = INADDR_ANY;
+        addr4->sin_port = port;
+        return (sockaddr *)(&storage);
+    }
+    else if(strcmp(protocol, "v6") == 0) {
+        sockaddr_in6 *addr6 = (sockaddr_in6 *)(&storage);
+        addr6->sin6_family = AF_INET6;
+        addr6->sin6_addr = in6addr_any;
+        addr6->sin6_port = port;
+        return (sockaddr *)(&storage);
+    }
+    else {
+        return NULL;
+    }
+}
+
+// Cria o socket do servidor e o amarra às interfaces locais de comunicação,
+// com reuso de endereço.
+void Server::InitializeSocket() {
+    socket = CreateSocket(storage);
     int enable = 1;
-    if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0)
+    if(setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0)
         LogExit("Failed to set setsockopt(SO_REUSEADDR)");
-
-    // Atrelando um endereço ao socket inicializado
-    if(bind(serverSocket, addr, sizeof(storage)) != 0)
+    // Amarrando endereço ao socket inicializado (INADDR_ANY para todas as interfaces locais)
+    if(bind(socket, addr, sizeof(storage)) != 0)
         LogExit("Error when binding name to socket");
-
     // Preparando para aceitar conexões de clientes
-    if(listen(serverSocket, 10) != 0)
+    if(listen(socket, 10) != 0)
         LogExit("Error when preparing to listen to connections");
 
     char addrstr[BUFSZ];
     AddrToStr(addr, addrstr, BUFSZ);
     printf("Bound to %s, waiting connections\n", addrstr);
-
-    // Recebendo mensagens de clientes
-    while(true) {
-        sockaddr_storage clientStorage;
-        sockaddr *clientAddr = (sockaddr *)(&clientStorage);
-        socklen_t clientAddrLen = sizeof(clientStorage);
-
-        int clientSocket = accept(serverSocket, clientAddr, &clientAddrLen);
-        if(clientSocket == -1)
-            LogExit("Error on accepting connection");
-
-        // Criando estrutura de dados para dados do cliente
-        ClientData *clientData = new ClientData(clientSocket, &clientStorage);
-
-        // Criando nova thread para lidar com esse cliente
-        pthread_t threadID;
-        pthread_create(&threadID, NULL, ClientThread, clientData);
-    }
-
-    exit(EXIT_SUCCESS);
 }
 
-// Cria nova thread para lidar com um cliente individualmente
+// Espera a próxima conexão estabelecida com um cliente
+int Server::AwaitClientSocket(sockaddr_storage *clientStorage) {
+    sockaddr *clientAddr = (sockaddr *)clientStorage;
+    socklen_t clientAddrLen = sizeof(*clientStorage);
+
+    int clientSocket = accept(socket, clientAddr, &clientAddrLen);
+    if(clientSocket == -1)
+        LogExit("Error on accepting connection");
+
+    return clientSocket;
+}
+
+void Server::CreateNewClientThread(const int clientSocket, sockaddr_storage *clientStorage) {
+    // Criando estrutura de dados para dados do cliente
+    ClientData *clientData = new ClientData(clientSocket, clientStorage);
+    RegisterClient(clientData);
+
+    // Criando nova thread para lidar com esse cliente
+    pthread_t threadID;
+    ThreadData *threadData = new ThreadData(this, clientData);
+    //pthread_create(&threadID, NULL, ClientThread, clientData);
+    pthread_create(&threadID, NULL, ClientThread, threadData);
+}
+
+void Server::RegisterClient(ClientData *client) {
+    clients.insert(std::pair<int,ClientData*>(client->socket, client));
+    PrintClients();
+}
+
+void Server::UnregisterClient(ClientData *client) {
+    if(client == nullptr) return;
+    
+    auto it = clients.find(client->socket);
+    if(it != clients.end())
+        clients.erase(it);
+    delete client;
+}
+
+void Server::PrintClients() {
+    for(auto it = clients.begin(); it != clients.end(); ++it) {
+        printf("Client socket: %d\n", it->first);
+    }
+}
+
+// Thread para lidar com cada cliente separadamente
 void *ClientThread(void *data) {
     // Armazenando dados do cliente
-    ClientData *clientData = (ClientData *)data;
+    ThreadData *threadData = (ThreadData *)data;
+    Server *server = threadData->server;
+
+    ClientData *clientData = threadData->clientData;
     sockaddr *clientAddr = (sockaddr *)&(clientData->storage);
     int clientSocket = clientData->socket;
 
@@ -76,14 +131,40 @@ void *ClientThread(void *data) {
     size_t byteCount = recv(clientSocket, buf, BUFSZ, 0);
     printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)byteCount, buf);
 
-    // Manda resposta de mensagem recebida para o cliente
+    // Mandando resposta de mensagem recebida para o cliente
     sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
     byteCount = send(clientSocket, buf, strlen(buf) + 1, 0);
     if(byteCount != strlen(buf) + 1)
         LogExit("Error on sending message to client");
     
-    // Fecha a thread e o socket do cliente com êxito
+    // Terminando o socket do cliente e deleta seus dados do servidor
     close(clientSocket);
-    delete clientData;
+    server->UnregisterClient(clientData);
+    // Terminando a thread
+    delete threadData;
     pthread_exit(EXIT_SUCCESS);
+}
+
+ThreadData::ThreadData(Server *server, ClientData *clientData) {
+    this->server = server;
+    this->clientData = clientData;
+}
+
+int main(int argc, char **argv) {
+    if(argc < 3)
+        Usage(argc, argv);
+    
+    // Inicializando o servidor com determinado protocolo e porta
+    Server server = Server(argv[1], argv[2]);
+
+    // Loop para estabelecer conexão com clientes
+    while(true) {
+        sockaddr_storage clientStorage;
+        int clientSocket = server.AwaitClientSocket(&clientStorage);
+
+        // Ao achar um cliente, cria uma thread pra ele
+        server.CreateNewClientThread(clientSocket, &clientStorage);
+    }
+
+    exit(EXIT_SUCCESS);
 }

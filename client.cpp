@@ -11,16 +11,9 @@ int main(int argc, char **argv) {
         Usage(argc, argv);
 
     // Inicializando o socket para comunicação
-    // Pegando endereço
     sockaddr_storage storage;
-    if(AddrParse(argv[1], argv[2], &storage) != 0)
-        Usage(argc, argv);
-    sockaddr *addr = (sockaddr *)(&storage);
-    // Criando socket
-    int clientSocket;
-    clientSocket = socket(storage.ss_family, SOCK_STREAM, 0);
-    if(clientSocket == -1)
-        LogExit("Error on socket init");
+    sockaddr *addr = FetchSocketAddress(argv[1], argv[2], &storage);
+    int clientSocket = CreateSocket(storage);
 
     // Abrindo a conexão com o servidor
     if(connect(clientSocket, addr, sizeof(storage)) != 0)

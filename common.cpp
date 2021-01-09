@@ -67,32 +67,21 @@ void AddrToStr(const sockaddr *addr, char *str, size_t size) {
     
 }
 
-int ServerSockaddrInit(const char *proto, const char *portstr, sockaddr_storage *storage) {
-    // Analisando o porto
-    u_int16_t port = (u_int16_t)atoi(portstr);
-    if(port == 0)
-        return -1;
-    // Convertendo a representação do porto do dispositivo para a da rede (s = short)
-    port = htons(port);
+// Armazena o endereço do socket numa estrutura de dados sockaddr,
+// baseado nos argumentos do cliente
+sockaddr *FetchSocketAddress(const char* arg, const char* port, sockaddr_storage *storage) {
+    if(AddrParse(arg, port, storage) != 0)
+            LogExit("Error on parsing IP address from arguments");
+    return (sockaddr *)storage;
+}
 
-    memset(storage, 0, sizeof(*storage));
-    if(strcmp(proto, "v4") == 0) {
-        sockaddr_in *addr4 = (sockaddr_in *)storage;
-        addr4->sin_family = AF_INET;
-        addr4->sin_addr.s_addr = INADDR_ANY;
-        addr4->sin_port = port;
-        return 0;
-    }
-    else if(strcmp(proto, "v6") == 0) {
-        sockaddr_in6 *addr6 = (sockaddr_in6 *)storage;
-        addr6->sin6_family = AF_INET6;
-        addr6->sin6_addr = in6addr_any;
-        addr6->sin6_port = port;
-        return 0;
-    }
-    else {
-        return -1;
-    }
+// Inicializa um socket com o protocolo em storage
+int CreateSocket(const sockaddr_storage storage) {
+    int s;
+    s = socket(storage.ss_family, SOCK_STREAM, 0);
+    if(s == -1)
+        LogExit("Error on socket init");
+    return s;
 }
 
 void LogExit(const char* msg) {

@@ -11,6 +11,8 @@
 int AddrParse(const char *addrstr, const char *portstr, sockaddr_storage *storage);
 void AddrToStr(const sockaddr *addr, char *addrstr, size_t size);
 void LogExit(const char* msg);
-int ServerSockaddrInit(const char *proto, const char *portstr, sockaddr_storage *storage);
+
+sockaddr *FetchSocketAddress(const char* arg, const char* port, sockaddr_storage *storage);
+int CreateSocket(const sockaddr_storage storage);
 
 #endif

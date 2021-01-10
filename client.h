@@ -17,7 +17,7 @@
 
 #include "common.h"
 
-#define BUFSZ 1024
+#define BUFSZ 500
 
 class Client {
     public:

@@ -93,6 +93,17 @@ void Server::PrintClients() {
 int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientData *clientData) {
     memset(buffer, 0, bufferSize);
     size_t byteCount = recv(clientData->socket, buffer, bufferSize, 0);
+
+    // Lidando com mensagens incompletas
+    std::string message(buffer);
+    size_t nCount = std::count(message.begin(), message.end(), '\n');
+    while(nCount == 0) {
+        byteCount += recv(clientData->socket, buffer, bufferSize, 0);
+        message += std::string(buffer);
+        nCount = std::count(message.begin(), message.end(), '\n');
+    }
+    buffer = &message[0];
+
     if(byteCount == 0) {
         // Conexão terminada
         return -1;
@@ -107,6 +118,7 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
 
     // Invalid message
     if(!parser.IsValid(message)) {
+        printf("Invalid Message from %d\n", clientSocket);
         return -1;
     }
 

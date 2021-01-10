@@ -19,7 +19,7 @@
 #include "clientData.h"
 #include "messageParser.h"
 
-#define BUFSZ 1024
+#define BUFSZ 500
 
 class Server {
     public:

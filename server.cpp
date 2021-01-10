@@ -174,11 +174,26 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
 // Manda mensagem para os clientes que tiverem tags na lista de tags passada na função
 void Server::SendMessageToClients(const char *buffer, ClientData *sender, const std::vector<std::string> tags) {
     for(auto it = clients.begin(); it != clients.end(); ++it) {
+        // Não manda a mensagem para o remetente
         if(it->second == sender) continue;
+        // Não manda pra quem não estiver inscrito em alguma tag da lista
+        if(!IsSubscribedToTag(it->second->socket, tags)) {
+            continue;
+        }
+        
         size_t byteCount = send(it->first, buffer, strlen(buffer) + 1, 0);
         if(byteCount != strlen(buffer) + 1)
             LogExit("Error on sending message to client");
     }
+}
+
+bool Server::IsSubscribedToTag(const int clientID, const std::vector<std::string> tags) {
+    for(auto it = tags.begin(); it != tags.end(); ++it) {
+        auto it2 = std::find(clientTags[clientID].begin(), clientTags[clientID].end(), *it);
+        // Achou pelo menos uma tag inscrita
+        if(it2 != clientTags[clientID].end()) return true;
+    }
+    return false;
 }
 
 // Thread para lidar com cada cliente separadamente

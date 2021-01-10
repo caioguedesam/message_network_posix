@@ -24,6 +24,8 @@ std::vector<std::string> MessageParser::GetTags(const std::string message) {
         // Se o primeiro char após o espaço é #, é uma tag
         if(tag[0] == '#') {
             tag = RemoveNewline(tag);
+            // Remove # antes de inscrever
+            tag.erase(0, 1);
             tags.push_back(tag);
         }   // Depois fazer checagem para tags válidas
     }

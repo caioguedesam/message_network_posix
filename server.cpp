@@ -80,7 +80,6 @@ void Server::CreateNewClientThread(const int clientSocket, sockaddr_storage *cli
     // Criando nova thread para lidar com esse cliente
     pthread_t threadID;
     ThreadData *threadData = new ThreadData(this, clientData);
-    //pthread_create(&threadID, NULL, ClientThread, clientData);
     pthread_create(&threadID, NULL, ClientThread, threadData);
 }
 
@@ -110,7 +109,7 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
         // Conexão terminada
         return -1;
     }
-    // Parse message (register tags or send to other clients)
+    printf("Received %ld bytes\n", byteCount);
     return 0;
 }
 

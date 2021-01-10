@@ -59,8 +59,12 @@ void Client::EnterMessage(char *buffer, const int bufferSize) {
 
 // Envia mensagem ao servidor após a entrada pelo cliente
 void Client::SendMessage(char *buffer, const int bufferSize) {
-    size_t byteCount = send(socket, buffer, strlen(buffer) + 1, 0);
-    if(byteCount != strlen(buffer) + 1)
+    // Removendo \0 da mensagem
+    std::string message(buffer);
+    std::remove(message.begin(), message.end(), '\0');
+
+    size_t byteCount = send(socket, &message[0], strlen(&message[0]), 0);
+    if(byteCount != strlen(&message[0]))
         LogExit("Error on sending message to server");
 }
 

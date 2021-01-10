@@ -27,8 +27,6 @@ class Client {
 
     Client(const char *addr, const char *port);
     sockaddr *FetchServerAddress(const char *addrStr, const char *portStr);
-    sockaddr *FetchServerAddress4(in_addr addr, const uint16_t port);
-    sockaddr *FetchServerAddress6(in6_addr addr, const uint16_t port);
     void InitializeSocket();
     void ConnectToServer();
     void EnterMessage(char *buffer, const int bufferSize);

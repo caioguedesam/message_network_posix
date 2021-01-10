@@ -1,7 +1,7 @@
 #include "server.h"
 
-Server::Server(const char* protocol, const char* port) {
-    addr = FetchServerAddress(protocol, port);
+Server::Server(const char* port) {
+    addr = FetchServerAddress(port);
     if(addr == nullptr)
         LogExit("Error while fetching server address on server construction");
     InitializeSocket();
@@ -16,13 +16,18 @@ Server::~Server() {
 
 // Pega o endereço de todas as interfaces locais para o servidor
 // posteriormente amarrar a um socket
-sockaddr* Server::FetchServerAddress(const char* protocol, const char* portstr) {
+sockaddr* Server::FetchServerAddress(const char* portstr) {
     uint16_t port = ParsePortFromDevice(portstr);
     if(port == 0)
         LogExit("Error while parsing port from device when fetching server address on server");
 
     memset(&storage, 0, sizeof(storage));
-    if(strcmp(protocol, "v4") == 0) {
+    sockaddr_in *addr4 = (sockaddr_in *)(&storage);
+    addr4->sin_family = AF_INET;
+    addr4->sin_addr.s_addr = INADDR_ANY;
+    addr4->sin_port = port;
+    return (sockaddr *)(&storage);
+    /*if(strcmp(protocol, "v4") == 0) {
         sockaddr_in *addr4 = (sockaddr_in *)(&storage);
         addr4->sin_family = AF_INET;
         addr4->sin_addr.s_addr = INADDR_ANY;
@@ -38,7 +43,7 @@ sockaddr* Server::FetchServerAddress(const char* protocol, const char* portstr) 
     }
     else {
         return nullptr;
-    }
+    }*/
 }
 
 // Cria o socket do servidor e o amarra às interfaces locais de comunicação,
@@ -109,7 +114,6 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
         // Conexão terminada
         return -1;
     }
-    printf("Received %ld bytes\n", byteCount);
     return 0;
 }
 
@@ -232,11 +236,11 @@ ThreadData::ThreadData(Server *server, ClientData *clientData) {
 }
 
 int main(int argc, char **argv) {
-    if(argc < 3)
+    if(argc < 2)
         Usage(argc, argv);
     
     // Inicializando o servidor com determinado protocolo e porta
-    Server server = Server(argv[1], argv[2]);
+    Server server = Server(argv[1]);
 
     // Loop para estabelecer conexão com clientes
     while(true) {
@@ -251,7 +255,7 @@ int main(int argc, char **argv) {
 }
 
 void Usage(int argc, char **argv) {
-    printf("usage: %s <v4|v6> <server port>\n", argv[0]);
-    printf("example: %s v4 51511\n", argv[0]);
+    printf("usage: %s <server port>\n", argv[0]);
+    printf("example: %s 51511\n", argv[0]);
     exit(EXIT_FAILURE);
 }

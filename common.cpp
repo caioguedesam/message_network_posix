@@ -1,31 +1,22 @@
 #include "common.h"
 
-// Transforma endereço IPv4 ou IPv6 em string
+// Transforma endereço IPv4 string
 void AddrToStr(const sockaddr *addr, char *str, size_t size) {
-    int version;
-    char addrstr[INET6_ADDRSTRLEN + 1] = "";
+    char addrstr[INET_ADDRSTRLEN + 1] = "";
     uint16_t port;
 
     if(addr->sa_family == AF_INET) {
-        version = 4;
         sockaddr_in *addr4 = (sockaddr_in *)addr;
-        if(!inet_ntop(AF_INET, &(addr4->sin_addr), addrstr, INET6_ADDRSTRLEN + 1))
+        if(!inet_ntop(AF_INET, &(addr4->sin_addr), addrstr, INET_ADDRSTRLEN + 1))
             LogExit("Error converting network address to presentation in AddrToStr");
         port = ntohs(addr4->sin_port);
     }
-    else if(addr->sa_family == AF_INET6) {
-        version = 6;
-        sockaddr_in6 *addr6 = (sockaddr_in6 *)addr;
-        if(!inet_ntop(AF_INET6, &(addr6->sin6_addr), addrstr, INET6_ADDRSTRLEN + 1))
-            LogExit("Error converting network address to presentation in AddrToStr");
-        port = ntohs(addr6->sin6_port);
-    }
     else {
-        LogExit("Unknown protocol family");
+        LogExit("Unsupported protocol family");
     }
 
     if(str)
-        snprintf(str, size, "IPv%d %s %hu", version, addrstr, port);
+        snprintf(str, size, "IPv4 %s %hu", addrstr, port);
 
 }
 

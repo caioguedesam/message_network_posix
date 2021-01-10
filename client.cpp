@@ -14,29 +14,15 @@ sockaddr* Client::FetchServerAddress(const char *addrStr, const char *portStr) {
         LogExit("Error while parsing port from device when fetching server address on client");
 
     in_addr inaddr4;
-    if(inet_pton(AF_INET, addrStr, &inaddr4))
-        return FetchServerAddress4(inaddr4, port);
-    in6_addr inaddr6;
-    if(inet_pton(AF_INET6, addrStr, &inaddr6))
-        return FetchServerAddress6(inaddr6, port);
+    if(inet_pton(AF_INET, addrStr, &inaddr4)) {
+        sockaddr_in *addr4 = (sockaddr_in *)(&storage);
+        addr4->sin_family = AF_INET;
+        addr4->sin_port = port;
+        addr4->sin_addr = inaddr4;
+        return (sockaddr *)(&storage);
+    }
     
     return nullptr;
-}
-
-sockaddr* Client::FetchServerAddress4(in_addr addr, const uint16_t port) {
-    sockaddr_in *addr4 = (sockaddr_in *)(&storage);
-    addr4->sin_family = AF_INET;
-    addr4->sin_port = port;
-    addr4->sin_addr = addr;
-    return (sockaddr *)(&storage);
-}
-
-sockaddr* Client::FetchServerAddress6(in6_addr addr, const uint16_t port) {
-    sockaddr_in6 *addr6 = (sockaddr_in6 *)(&storage);
-    addr6->sin6_family = AF_INET6;
-    addr6->sin6_port = port;
-    memcpy(&(addr6->sin6_addr), &addr, sizeof(addr));
-    return (sockaddr *)(&storage);
 }
 
 // Cria o socket do cliente para comunicação com o servidor

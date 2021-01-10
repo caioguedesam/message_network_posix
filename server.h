@@ -30,9 +30,9 @@ class Server {
     std::map<int, std::vector<std::string>> clientTags;
     MessageParser parser;
 
-    Server(const char* protocol, const char* port);
+    Server(const char* port);
     ~Server();
-    sockaddr* FetchServerAddress(const char* protocol, const char* portstr);
+    sockaddr* FetchServerAddress(const char* portstr);
     void InitializeSocket();
     int AwaitClientSocket(sockaddr_storage *clientStorage);
     

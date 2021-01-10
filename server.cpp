@@ -27,23 +27,6 @@ sockaddr* Server::FetchServerAddress(const char* portstr) {
     addr4->sin_addr.s_addr = INADDR_ANY;
     addr4->sin_port = port;
     return (sockaddr *)(&storage);
-    /*if(strcmp(protocol, "v4") == 0) {
-        sockaddr_in *addr4 = (sockaddr_in *)(&storage);
-        addr4->sin_family = AF_INET;
-        addr4->sin_addr.s_addr = INADDR_ANY;
-        addr4->sin_port = port;
-        return (sockaddr *)(&storage);
-    }
-    else if(strcmp(protocol, "v6") == 0) {
-        sockaddr_in6 *addr6 = (sockaddr_in6 *)(&storage);
-        addr6->sin6_family = AF_INET6;
-        addr6->sin6_addr = in6addr_any;
-        addr6->sin6_port = port;
-        return (sockaddr *)(&storage);
-    }
-    else {
-        return nullptr;
-    }*/
 }
 
 // Cria o socket do servidor e o amarra às interfaces locais de comunicação,
@@ -90,6 +73,7 @@ void Server::CreateNewClientThread(const int clientSocket, sockaddr_storage *cli
 
 void Server::RegisterClient(ClientData *client) {
     clients.insert(std::pair<int,ClientData*>(client->socket, client));
+    printf("client list size: %ld\n", clients.size());
 }
 
 void Server::UnregisterClient(ClientData *client) {
@@ -161,15 +145,16 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
         }
         return 0;
     }
+    if(parser.IsKill(message)) {
+        KillAll();
+    }
 
     // Checking message type
-    if(!parser.IsKill(message) && !parser.IsSubscribe(message) && !parser.IsUnsubscribe(message)) {
-        std::vector<std::string> tags = parser.GetTags(message);
-        // Se não tiver nenhuma tag, retorna sem enviar mensagem para outros clientes
-        if(tags.empty()) return 0;
-        // Envia mensagem para clientes inscritos na tag
-        SendMessageToClients(&message[0], clientData, tags);
-    }
+    std::vector<std::string> tags = parser.GetTags(message);
+    // Se não tiver nenhuma tag, retorna sem enviar mensagem para outros clientes
+    if(tags.empty()) return 0;
+    // Envia mensagem para clientes inscritos na tag
+    SendMessageToClients(&message[0], clientData, tags);
 
     return 0;
 }
@@ -199,6 +184,24 @@ bool Server::IsSubscribedToTag(const int clientID, const std::vector<std::string
     return false;
 }
 
+void Server::TerminateClientConnection(const int clientID) {
+    auto it = clients.find(clientID);
+    if(it == clients.end()) return;
+    close(clientID);
+    delete clients[clientID];
+    clients.erase(it);
+}
+
+void Server::KillAll() {
+    std::vector<int> clientIDs;
+    for(auto it = clients.begin(); it != clients.end(); ++it)
+        clientIDs.push_back(it->first);
+    for(auto it = clientIDs.begin(); it != clientIDs.end(); ++it)
+        TerminateClientConnection(*it);
+
+    exit(EXIT_SUCCESS);
+}
+
 // Thread para lidar com cada cliente separadamente
 void *ClientThread(void *data) {
     // Armazenando dados do cliente
@@ -222,9 +225,7 @@ void *ClientThread(void *data) {
     }
     
     // Terminando o socket do cliente e deleta seus dados do servidor
-    printf("Terminating client w/ socket %d\n", clientData->socket);
-    close(clientSocket);
-    server->UnregisterClient(clientData);
+    server->TerminateClientConnection(clientSocket);
     // Terminando a thread
     delete threadData;
     pthread_exit(EXIT_SUCCESS);
@@ -247,6 +248,7 @@ int main(int argc, char **argv) {
         sockaddr_storage clientStorage;
         int clientSocket = server.AwaitClientSocket(&clientStorage);
 
+        printf("Creating new client thread\n");
         // Ao achar um cliente, cria uma thread pra ele
         server.CreateNewClientThread(clientSocket, &clientStorage);
     }

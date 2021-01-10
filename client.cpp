@@ -39,7 +39,6 @@ void Client::ConnectToServer() {
 // Recebe mensagem de entrada do cliente para ser enviada ao servidor
 void Client::EnterMessage(char *buffer, const int bufferSize) {
     memset(buffer, 0, bufferSize);
-    printf("> ");
     fgets(buffer, bufferSize-1, stdin);
 }
 

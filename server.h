@@ -45,6 +45,7 @@ class Server {
 
     int ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientData *clientData);
     int ParseMessageFromClient(const char *buffer, ClientData *clientData);
+    void SendMessageToClient(std::string message, const int clientSocket);
     void SendMessageToClients(const char *buffer, ClientData *sender, const std::vector<std::string> tags);
     bool IsSubscribedToTag(const int clientID, const std::vector<std::string> tag);
     void TerminateClientConnection(const int clientID);

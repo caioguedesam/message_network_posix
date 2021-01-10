@@ -73,7 +73,6 @@ void Server::CreateNewClientThread(const int clientSocket, sockaddr_storage *cli
 
 void Server::RegisterClient(ClientData *client) {
     clients.insert(std::pair<int,ClientData*>(client->socket, client));
-    printf("client list size: %ld\n", clients.size());
 }
 
 void Server::UnregisterClient(ClientData *client) {
@@ -118,13 +117,13 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
         tag.erase(0, 1);
         // Check if tag is already subscribed
         if(std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag) != clientTags[clientSocket].end()) {
-            printf("< already subscribed +");
-            puts(&tag[0]);
+            std::string warning = "already subscribed +" + tag + "\n";
+            SendMessageToClient(warning, clientSocket);
         }
         else {
             clientTags[clientSocket].push_back(tag);
-            printf("< subscribed +");
-            puts(&tag[0]);
+            std::string warning = "subscribed +" + tag + "\n";
+            SendMessageToClient(warning, clientSocket);
         }
         return 0;
     }
@@ -135,13 +134,13 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
         // Check if tag is already subscribed
         auto it = std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag);
         if(it == clientTags[clientSocket].end()) {
-            printf("< not subscribed -");
-            puts(&tag[0]);
+            std::string warning = "not subscribed -" + tag + "\n";
+            SendMessageToClient(warning, clientSocket);
         }
         else {
             clientTags[clientSocket].erase(it);
-            printf("< unsubscribed -");
-            puts(&tag[0]);
+            std::string warning = "unsubscribed -" + tag + "\n";
+            SendMessageToClient(warning, clientSocket);
         }
         return 0;
     }
@@ -157,6 +156,12 @@ int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
     SendMessageToClients(&message[0], clientData, tags);
 
     return 0;
+}
+
+// Manda mensagem qualquer para um cliente, sem \0
+void Server::SendMessageToClient(std::string message, const int clientSocket) {
+    std::remove(message.begin(), message.end(), '\0');
+    send(clientSocket, &message[0], strlen(&message[0]), 0);
 }
 
 // Manda mensagem para os clientes que tiverem tags na lista de tags passada na função
@@ -248,7 +253,6 @@ int main(int argc, char **argv) {
         sockaddr_storage clientStorage;
         int clientSocket = server.AwaitClientSocket(&clientStorage);
 
-        printf("Creating new client thread\n");
         // Ao achar um cliente, cria uma thread pra ele
         server.CreateNewClientThread(clientSocket, &clientStorage);
     }

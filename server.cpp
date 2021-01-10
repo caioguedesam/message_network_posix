@@ -112,61 +112,66 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
 }
 
 int Server::ParseMessageFromClient(const char *buffer, ClientData *clientData) {
-    std::string message(buffer);
-    message = parser.RemoveNewline(message);
-    int clientSocket = clientData->socket;
+    // Verificando se a mensagem são mais de uma mensagem separadas por \n
+    std::string rawMessage(buffer);
+    std::vector<std::string> messages = parser.Split(rawMessage, '\n');
+    // Para cada mensagem identificada, faz o processo de análise
+    for(auto it = messages.begin(); it != messages.end(); ++it) {
+        std::string message = *it;
 
-    // Invalid message
-    if(!parser.IsValid(message)) {
-        printf("Invalid Message from %d\n", clientSocket);
-        return -1;
-    }
+        int clientSocket = clientData->socket;
 
-    // Subscribing/Unsubscribing to tags
-    if(parser.IsSubscribe(message)) {
-        std::string tag = message;
-        // Erase +
-        tag.erase(0, 1);
-        // Check if tag is already subscribed
-        if(std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag) != clientTags[clientSocket].end()) {
-            std::string warning = "already subscribed +" + tag + "\n";
-            SendMessageToClient(warning, clientSocket);
+        // Mensagem inválida
+        if(!parser.IsValid(message)) {
+            printf("Invalid Message from %d\n", clientSocket);
+            return -1;
         }
-        else {
-            clientTags[clientSocket].push_back(tag);
-            std::string warning = "subscribed +" + tag + "\n";
-            SendMessageToClient(warning, clientSocket);
-        }
-        return 0;
-    }
-    else if(parser.IsUnsubscribe(message)) {
-        std::string tag = message;
-        // Erase -
-        tag.erase(0, 1);
-        // Check if tag is already subscribed
-        auto it = std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag);
-        if(it == clientTags[clientSocket].end()) {
-            std::string warning = "not subscribed -" + tag + "\n";
-            SendMessageToClient(warning, clientSocket);
-        }
-        else {
-            clientTags[clientSocket].erase(it);
-            std::string warning = "unsubscribed -" + tag + "\n";
-            SendMessageToClient(warning, clientSocket);
-        }
-        return 0;
-    }
-    if(parser.IsKill(message)) {
-        KillAll();
-    }
 
-    // Checking message type
-    std::vector<std::string> tags = parser.GetTags(message);
-    // Se não tiver nenhuma tag, retorna sem enviar mensagem para outros clientes
-    if(tags.empty()) return 0;
-    // Envia mensagem para clientes inscritos na tag
-    SendMessageToClients(&message[0], clientData, tags);
+        // Inscrevendo/Desinscrevendo em tags
+        if(parser.IsSubscribe(message)) {
+            std::string tag = message;
+            // Apaga o identificador +
+            tag.erase(0, 1);
+            // Vê se a tag já está inscrita
+            if(std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag) != clientTags[clientSocket].end()) {
+                std::string warning = "already subscribed +" + tag + "\n";
+                SendMessageToClient(warning, clientSocket);
+            }
+            else {
+                clientTags[clientSocket].push_back(tag);
+                std::string warning = "subscribed +" + tag + "\n";
+                SendMessageToClient(warning, clientSocket);
+            }
+        }
+        else if(parser.IsUnsubscribe(message)) {
+            std::string tag = message;
+            // // Apaga o identificador -
+            tag.erase(0, 1);
+            // Vê se a tag já está inscrita
+            auto it = std::find(clientTags[clientSocket].begin(), clientTags[clientSocket].end(), tag);
+            if(it == clientTags[clientSocket].end()) {
+                std::string warning = "not subscribed -" + tag + "\n";
+                SendMessageToClient(warning, clientSocket);
+            }
+            else {
+                clientTags[clientSocket].erase(it);
+                std::string warning = "unsubscribed -" + tag + "\n";
+                SendMessageToClient(warning, clientSocket);
+            }
+        }
+        // Mata servidor e conexões com clientes
+        if(parser.IsKill(message)) {
+            KillAll();
+        }
 
+        // Envia mensagem normalmente para inscritos nas tags
+        std::vector<std::string> tags = parser.GetTags(message);
+        // Se não tiver nenhuma tag, continua sem enviar mensagem para outros clientes
+        if(tags.empty()) continue;
+        message += '\n';
+        SendMessageToClients(&message[0], clientData, tags);
+    }
+    
     return 0;
 }
 

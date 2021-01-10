@@ -94,6 +94,10 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
     memset(buffer, 0, bufferSize);
     size_t byteCount = recv(clientData->socket, buffer, bufferSize, 0);
 
+    if(byteCount == 0) {
+        // Conexão terminada
+        return -1;
+    }
     // Lidando com mensagens incompletas
     std::string message(buffer);
     size_t nCount = std::count(message.begin(), message.end(), '\n');
@@ -103,11 +107,6 @@ int Server::ReceiveMessageFromClient(char *buffer, const int bufferSize, ClientD
         nCount = std::count(message.begin(), message.end(), '\n');
     }
     buffer = &message[0];
-
-    if(byteCount == 0) {
-        // Conexão terminada
-        return -1;
-    }
     return 0;
 }
 
@@ -212,7 +211,6 @@ void Server::TerminateClientConnection(const int clientID) {
     close(clientID);
     delete clients[clientID];
     clients.erase(it);
-    printf("Terminated connection with client %d\n", clientID);
 }
 
 void Server::KillAll() {

@@ -212,6 +212,7 @@ void Server::TerminateClientConnection(const int clientID) {
     close(clientID);
     delete clients[clientID];
     clients.erase(it);
+    printf("Terminated connection with client %d\n", clientID);
 }
 
 void Server::KillAll() {
